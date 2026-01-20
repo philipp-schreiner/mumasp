@@ -1,0 +1,57 @@
+[build-system]
+requires      = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mumasp"
+dynamic = ["version"]
+description = ""
+readme = {file = "README.md", content-type = "text/markdown"}
+authors = [
+    { name = "Philipp Schreiner", email = "philipp.schreiner@oeaw.ac.at" },
+]
+classifiers = [
+    "Topic :: Scientific/Engineering :: Physics",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+]
+dependencies = []
+requires-python = ">=3.9"
+
+[project.urls]
+Repository = "https://github.com/ps/mumasp"
+
+[tool.setuptools.dynamic]
+version = {attr = "mumasp._version.__version__"}
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+
+[tool.ruff.lint]
+extend-select = [
+    "D", 
+    "TD", 
+    "TID", 
+    "SIM", 
+    "RET", 
+    "ICN", 
+    "C4", 
+    "UP", 
+    "I", 
+    "A", 
+    "N",
+    "ANN",
+    "D417",
+    ]
+ignore = ["D105"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+docstring-code-format = true
