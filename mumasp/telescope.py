@@ -8,20 +8,20 @@ from .logger import logger
 
 class Telescope:
     """"""
-
+    # These config entries have to match those in the Arduino code!
     _arduino_conf = {
         "IP": "192.168.99.99",
         "port": 1033,
     }
 
     _stepping_motor_conf = {
-        "steps_per_rev_phi": 800,
-        "steps_per_rev_theta": 800,
+        "steps_per_rev_phi": 12800,
+        "steps_per_rev_theta": 12800,
     }
 
     def __init__(
         self,
-        timeout: float = 10.0,
+        timeout: float = 60.0,
     ) -> None:
         self._timeout = timeout
 
@@ -94,7 +94,7 @@ class Telescope:
                 logger.error(msg)
                 ValueError(msg)
 
-            time.sleep(5)
+            time.sleep(1)
 
         self._calibrated = True
         self._current_pos = (90.0, 0.0)
@@ -128,21 +128,15 @@ class Telescope:
             response = self.send_cmd(f"m0,{steps_phi}")
             if response != "0":
                 logger.error(f"Moving to phi={phi % 360} failed. Response: {response}")
-            time.sleep(10)
 
         if abs(theta % 180 - self._current_pos[0]) < 1e-10:
             logger.info(f"Already at theta={theta % 180}.")
         else:
-            # Theta = 0 is spherical coordinates is usually at the north pole.
-            # For the arduino, it's at the equator. Which is why we offset it.
-            steps_theta = int(round(self._stepping_motor_conf["steps_per_rev_theta"] / 360.0 * (90 - (theta % 180))))
+            steps_theta = int(round(self._stepping_motor_conf["steps_per_rev_theta"] / 360.0 * (theta % 180)))
             logger.info(f"Moving to theta={theta % 180} ...")
             response = self.send_cmd(f"m1,{steps_theta}")
             if response != "0":
                 logger.error(f"Moving to theta={theta % 180} failed. Response: {response}")
-            time.sleep(10)
-
-        # TODO: response handling + more waiting
 
         self._current_pos = (theta % 180, phi % 360)
 

@@ -1,11 +1,12 @@
 // MuMaSP firmware
-#define VERSION "MuMaSP V0.04  28 August 2025 by Markus Friedl (markus.friedl@oeaw.ac.at)"
+#define VERSION "MuMaSP V0.05  22 January 2026 by Markus Friedl (markus.friedl@oeaw.ac.at)"
 #define HELP "\nCommand:	Meaning:	Return value:\n?	Display version and help		(lots of text)\na	Read analog inputs 0..3 (Vadjust for PMs)	4 comma-separated integer values of 14 bits (0..16383 = 0..5V)\ncA	Calibrate axis A (0|1)	0=ok, -1/-2=wrong argument, -3=end switch problem\ne	Read end switch status	2 comma-separated boolean values (0=not engaged, 1=engaged)\nmA,P	Move axis A (0|1) to position P	(0..799 = 0..360°)	0=ok, -1/-2/-3=wrong argument(s)\nr	Read RTC date/time	Year,Month,Day,Hour,Minute,Second\nsY,M,D,H,M,S	Set RTS date/time (arguments have the same format as output of 'r')	0=ok, -1/-2=wrong argument(s)\nx	Clear list of muon hits in memory	0\nn	Read number of muon hits in memory	N\nh	Read list of muon hit timestamps (Unix time) and clear list in memory	First line: N, followed by N unix time stamps (one per line)"
 
 #include <Ethernet.h>
 #include <DS3231.h>
 #include <Wire.h>
 #include <time.h>
+#include <AccelStepper.h> // docs: https://www.airspayce.com/mikem/arduino/AccelStepper/index.html
 
 #define LED_red   0
 #define LED_green 1
@@ -13,20 +14,25 @@
 #define END1  3
 #define END2  5
 #define DIR1  6
-#define CLK1  7
+#define CLK1  7 // PUL1
 #define DIR2  8
-#define CLK2  9
+#define CLK2  9 // PUL2
 
-#define STEPS      800   // number of turns for full circle (360°)
-#define DELAY       10   // waiting time between pulses (=1/speed)
+#define STEPS    12800   // number of turns for full circle (360°)
+#define MAXSPEED   600   // steps/s
+#define ACC        400   // steps/s^2
 #define MAXMUONS  1000   // maximum number of muon hit timestamps to record
 
-const unsigned char edc[2][3] = {{END1,DIR1,CLK1}, {END2,DIR2,CLK2}};
-unsigned int angle[2] = {0,0};    // current position in units of STEPS (full turn 360° = 800 STEPS)
+const unsigned char es[2] = {END1, END2}; // states of end switches
 
 
 unsigned int muons = 0;          // number of hits in list
 uint32_t timestamps[MAXMUONS];   // unix timestamps of muon hits
+
+AccelStepper steppers[2] = {
+  AccelStepper(AccelStepper::DRIVER, CLK1, DIR1),
+  AccelStepper(AccelStepper::DRIVER, CLK2, DIR2)
+};
 
 //
 // Ethernet connectivity
@@ -59,82 +65,66 @@ void muondetected()
 int calibrate(unsigned char axis)
 {
    int i;
-   unsigned char e;
+   unsigned char e = digitalRead(es[axis]);
 
    // rotate back if end switch is engaged
-   if (digitalRead(edc[axis][0]))
+   if (e)
    {
-      digitalWrite(edc[axis][1], LOW);  // DIR = LOW (clockwise)
-      i=STEPS/4;
-      do 
-      {
-         digitalWrite(edc[axis][2], HIGH);
-         delay(DELAY);
-         digitalWrite(edc[axis][2], LOW);
-         delay(DELAY);
-         e=digitalRead(edc[axis][0]);
-         i--;     
+      // rotate clockwise until switch is not engaged anymore
+      // (but at most two nineth of a turn)
+      steppers[axis].move(-2*STEPS/9);
+      while ((steppers[axis].distanceToGo() != 0) && e) {
+         steppers[axis].run();
+
+         e = digitalRead(es[axis]);
       }
-      while (e && i);
+      steppers[axis].stop();
 
-      if (i==0) return (-3);
+      if (e) {
+         return -3;
+      }
    }
 
-   digitalWrite(edc[axis][1], HIGH);  // DIR = HIGH (counter-clockwise)
-
-   i=STEPS;
-   do 
-   {
-      digitalWrite(edc[axis][2], HIGH);
-      delay(DELAY);
-      digitalWrite(edc[axis][2], LOW);
-      delay(DELAY);
-      e=digitalRead(edc[axis][0]);
-      i--;     
+   // rotate counter-clockwise until switch is engaged
+   // (but at most two nineth of a turn)
+   steppers[axis].move(2*STEPS/9);
+   while ( (steppers[axis].distanceToGo() != 0) && !e ) {
+      steppers[axis].run();
+      e = digitalRead(es[axis]);
+      if (e) {
+         // remember position where magnet engaged
+         i = steppers[axis].currentPosition();
+      }
    }
-   while (!e && i);
+   // move for another 10° to reach parallel position
+   while ( 
+      (steppers[axis].distanceToGo() != 0)
+      && (steppers[axis].currentPosition() - i < (STEPS*10/360))
+      ) {
+      steppers[axis].run();
+   }
+   steppers[axis].stop();
+   e = digitalRead(es[axis]);
 
-   if (i) angle[axis]=0;
-   if (i==0) return (-3);
-
-   // add 21 steps to go to parallel position
-   for (i=0; i<21; i++)
-   {
-      digitalWrite(edc[axis][2], HIGH);
-      delay(DELAY);
-      digitalWrite(edc[axis][2], LOW);
-      delay(DELAY);
+   if (e) {
+      steppers[axis].setCurrentPosition(0);
+   } else {
+      return -3;
    }
 
-   return (0);
+   return 0;
 }
 
 
 void setangle(unsigned char axis, unsigned int position)
 {
-   int i, diff;
-
-   digitalWrite(edc[axis][1], position<angle[axis] ? HIGH : LOW);  // DIR = HIGH (counter-clockwise) if desired position is below current one, otherwise clockwise
-
-   // workaround for non-working "abs" function
-   if (position>angle[axis])
-   {
-      diff=position-angle[axis];  
+   if ( axis == 0 ) {
+      // move clockwise
+      steppers[axis].runToNewPosition( -( position % STEPS ) );
+   } else {
+      // move counter-clockwise with 90° offset
+      steppers[axis].runToNewPosition( ( position % ( STEPS/2 ) ) - STEPS/4 );
    }
-   else
-   {
-      diff=angle[axis]-position;  
-   }
-
-   for (i=0; i<diff; i++)
-   {
-      digitalWrite(edc[axis][2], HIGH);
-      delay(DELAY);
-      digitalWrite(edc[axis][2], LOW);
-      delay(DELAY);
-   }
-
-   angle[axis]=position;
 }
 
 void setup() 
@@ -154,6 +144,13 @@ void setup()
    digitalWrite(CLK1, HIGH);
    digitalWrite(DIR2, LOW);
    digitalWrite(CLK2, HIGH);
+
+   // stepping motors
+   steppers[0].setMaxSpeed(MAXSPEED);
+   steppers[0].setAcceleration(ACC);
+   steppers[1].setMaxSpeed(MAXSPEED);
+   steppers[1].setAcceleration(ACC);
+
 
    // initialize the ethernet device 
    Ethernet.begin(ip_mac, ip, myDns);
@@ -278,7 +275,7 @@ void loop()
                      stringa[cr]=0;  // axis, position (0..799)
                      if (sscanf(stringa,"%d,%d",&i,&second)==2)
                      {
-                        if (((i==0) || (i==1)) && (second<=799))
+                        if (((i==0) || (i==1)) && (second<=STEPS-1))
                         {
                            setangle(i,second);
                            client.println("0");
