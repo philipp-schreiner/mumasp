@@ -140,6 +140,11 @@ class Telescope:
 
         self._current_pos = (theta % 180, phi % 360)
 
+    def reset_position(self) -> None:
+        """Return to the starting position (from which a new calibration can be attempted)."""
+        self.move_to(theta=60, phi=40)
+        self._calibrated = False
+
     @property
     def is_calibrated(self) -> bool:
         """True if telescope has been successfully calibrated."""
