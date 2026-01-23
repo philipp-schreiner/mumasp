@@ -139,11 +139,11 @@ def scan(
             out_path = out_dir / Path(f"meas_t{theta:.2f}_p{phi:.2f}.txt")
             if skip_existing and out_path.exists():
                 logger.info(
-                    f"Skipped measurement {k}/{n} because file for theta={theta:.2f}° and phi={phi:.2f}° already exists."
+                    f"Skipped measurement {k + 1}/{n} because file for theta={theta:.2f}° and phi={phi:.2f}° already exists."
                 )
                 continue
 
-            logger.info(f"Measurement {k}/{n} for theta={theta:.2f}° and phi={phi:.2f}° ...")
+            logger.info(f"Measurement {k + 1}/{n} for theta={theta:.2f}° and phi={phi:.2f}° ...")
 
             telescope.move_to(theta=theta, phi=phi)
 
