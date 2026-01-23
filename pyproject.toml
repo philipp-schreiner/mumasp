@@ -1,11 +1,11 @@
 [build-system]
-requires      = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "mumasp"
 dynamic = ["version"]
-description = ""
+description = "Small project to operate a muon telescope."
 readme = {file = "README.md", content-type = "text/markdown"}
 authors = [
     { name = "Philipp Schreiner", email = "philipp.schreiner@oeaw.ac.at" },
@@ -20,7 +20,10 @@ dependencies = []
 requires-python = ">=3.9"
 
 [project.urls]
-Repository = "https://github.com/ps/mumasp"
+Repository = "https://github.com/philipp-schreiner/mumasp"
+
+[tool.setuptools]
+packages = ["mumasp"]
 
 [tool.setuptools.dynamic]
 version = {attr = "mumasp._version.__version__"}

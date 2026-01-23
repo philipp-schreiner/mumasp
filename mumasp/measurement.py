@@ -1,4 +1,4 @@
-""""""
+"""Convenience functions for performing measurements with the muon telescope."""
 
 import json
 import os
@@ -13,8 +13,8 @@ from .telescope import Telescope
 def measure(
     telescope: Telescope,
     max_t_s: float = 3600,
-    max_trig: int = 10000,
-    read_interval_s: float = 10,
+    max_trig: int = 1000,
+    read_interval_s: float = 10.0,
     read_threshold: int = 100,
 ) -> tuple[int, float, list[int]]:
     """
@@ -23,24 +23,40 @@ def measure(
     Parameters
     ----------
     telescope : Telescope
-        ...
-    max_t_s: float
-        ...
-    max_trig: int
-        ...
-    read_interval_s: float
-        ...
-    read_threshold: int
-        ...
+        The instance of the muon telescope to perform the measurement on.
+    max_t_s: float, optional
+        Maximum number of seconds to measure. If `max_trig` is reached first, the measurement is stopped before this number of seconds is reached. Defaults to 3600 (one hour).
+    max_trig: int, optional
+        Maximum number of triggers to record before finishing the measurement. If `max_t_s` is reached first, the measurement is stopped before this number of triggers is reached. Defaults to 1000 triggers.
+    read_interval_s: float, optional
+        Number of seconds between two queries of the Arduino (every `read_interval_s` the number of triggers in the Arduino's memory is read). Has to be short enough to not risk overflowing the Arduino's memory (1000 triggers). Defaults to 10 seconds.
+    read_threshold: int, optional
+        Number of triggers to wait for before reading and emptying the Arduino's memory.
 
     Returns
     -------
-    int
-    ...
-    float
-    ...
-    list[int]
-    ...
+    t_start: int
+        The start UNIX timestamp (according to your computer's clock) of the measurement.
+    time_elapsed: float
+        The time (in seconds) between starting and stopping the measurement.
+    triggers: list[int]
+        A list of all trigger UNIX timestamps (according to the Arduino's clock).
+
+    Examples
+    --------
+    >>> import mumasp
+    >>> t = mumasp.Telescope()
+    >>> t.calibrate()
+
+    Now move the telescope to the vertical position
+    >>> t.move_to(theta=0, phi=0)
+
+    Start a measurement for one minute
+    >>> from mumasp.measurement import measure
+    >>> _, time_elapsed, triggers = measure(telescope, max_t_s=60)
+
+    Compute the rate (in Hz)
+    >>> rate = len(triggers) / time_elapsed
     """
     telescope.clear_buffer()
 
@@ -78,12 +94,37 @@ def scan(
     skip_existing: bool = True,
     **kwargs: dict,
 ) -> None:
-    """"""
+    """
+    Perform a measurement for all (theta, phi) positions in `positions` and write the measurement results to `save_dir`. Details regarding a single measurement are controlled by keyword arguments.
+
+    Parameters
+    ----------
+    telescope : Telescope
+        The instance of the muon telescope to perform the measurement on.
+    positions: list[tuple[float, float]]
+        List of (theta, phi) pairs of positions to perform the measurements in.
+    save_dir: str
+        The output directory for measurement files.
+    skip_existing: bool, optional
+        If True, positions that were already successfully measured are skipped. Defaults to True.
+    **kwargs
+        Extra arguments for `measure`: refer to its documentation for a list of all possible arguments.
+
+    Examples
+    --------
+    >>> import mumasp
+    >>> from mumasp.measurement import scan
+    >>> t = mumasp.Telescope()
+    >>> t.calibrate()
+
+    Now perform measurement in three positions, where each position is measured for 10 minutes (600 seconds).
+    >>> scan(t, [(0, 0), (45, 0), (90, 0)], "test_output/", max_t_s=600)
+
+    See Also
+    --------
+    measure : Perform a single measurement.
+    """
     out_dir = Path(save_dir)
-    if out_dir.is_dir():
-        raise FileExistsError(
-            f"Output directory '{save_dir}' already exists. Please choose a different output directory or delete '{save_dir}' to continue."
-        )
 
     if not all(isinstance(x, tuple) and len(x) == 2 and all(isinstance(y, (float, int)) for y in x) for x in positions):
         raise ValueError("Input argument 'positions' must be a list of 2-tuples of floats or integers.")
@@ -135,7 +176,25 @@ def raster_scan(
     phis: list[float],
     **kwargs: dict,
 ) -> None:
-    """"""
+    """
+    Perform a measurement for all (theta, phi) combinations in `thetas` and `phis`. The behavior is otherwise identical to `scan`.
+
+    Parameters
+    ----------
+    telescope : Telescope
+        The instance of the muon telescope to perform the measurement on.
+    thetas: list[float]
+        List of theta values.
+    phis: list[float]
+        List of phi values.
+    **kwargs
+        Extra arguments for `measure` or `scan`: refer to their documentations for a list of all possible arguments.
+
+    See Also
+    --------
+    measure : Perform a single measurement.
+    scan: Perform measurements for several telescope positions.
+    """
     scan(
         telescope=telescope,
         positions=[(theta, phi) for theta in thetas for phi in phis],

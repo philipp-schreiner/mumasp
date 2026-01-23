@@ -1,4 +1,4 @@
-""""""
+"""Telescope Arduino API."""
 
 import socket
 import time
@@ -7,7 +7,29 @@ from .logger import logger
 
 
 class Telescope:
-    """"""
+    """
+    Muon telescope API.
+
+    The muon telescope is operated by an Arduino. This class implements a wrapper to conveniently communicate with this Arduino and implements methods for moving the telescope around and reading muon triggers.
+
+    Parameters
+    ----------
+    timeout : float, optional
+        The time (in seconds) to wait for the Arduino to respond before a timeout error is raised. Defaults to 60 seconds.
+
+    Examples
+    --------
+    >>> import mumasp
+    >>> t = mumasp.Telescope()
+    >>> t.calibrate()
+    >>> t
+    Telescope(IP=192.168.99.99, calibrated=True, position=(90.0, 0.0))
+
+    Now that the telescope is calibrated, you can move it to arbitrary positions:
+
+    >>> t.move_to(theta=0, phi=90)
+    """
+
     # These config entries have to match those in the Arduino code!
     _arduino_conf = {
         "IP": "192.168.99.99",
@@ -61,11 +83,25 @@ class Telescope:
         logger.info(f"Buffer cleared. Response: {self.send_cmd('x')}")
 
     def read_ntrig(self) -> int:
-        """Return the number of triggers in the arduino's buffer."""
+        """
+        Return the number of triggers in the Arduino's buffer. Does not clear the buffer.
+
+        Returns
+        -------
+        counts : int
+            Number of triggers currently in the Arduino's trigger buffer.
+        """
         return int(self.send_cmd("n"))
 
     def read_buffer(self) -> list[int]:
-        """Read arduino trigger buffer."""
+        """
+        Read Arduino trigger buffer and clear it.
+
+        Returns
+        -------
+        timestamps : list[int]
+            List of UNIX trigger timestamps.
+        """
         # Discard first line (number of triggers)
         reply_lines = self.send_cmd("h").splitlines()[1:]
         sanitized_lines = [ln.strip() for ln in reply_lines if ln.strip()]
@@ -101,14 +137,14 @@ class Telescope:
 
     def move_to(self, theta: float, phi: float) -> None:
         """
-        Move the telescope to angles theta (azimuthal, 0-90°) and phi (polar, 0-360°).
+        Move the telescope to angles theta (azimuthal, 0-180°) and phi (polar, 0-360°).
 
         Parameters
         ----------
         theta : float
-            ...
+            Azimuth angle (0 ... North pole, 90 ... equator).
         phi : float
-            ...
+            Polar angle.
         """
         if not self._calibrated:
             msg = "Telescope must be calibrated before moving it."
@@ -152,7 +188,7 @@ class Telescope:
 
     @property
     def position(self) -> tuple[float, float]:
-        """Return the current (theta, phi) position that the telescope is facing."""
+        """The current (theta, phi) position that the telescope is facing."""
         return self._current_pos
 
     @property
