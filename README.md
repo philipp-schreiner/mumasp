@@ -1,4 +1,6 @@
-<div style="text-align: center"><img src="logo/mumasp.png" alt="logo" width="200"/></div>
+<h1 align="center">
+<img src="logo/mumasp.png" alt="logo" width="200"/>
+</h1>
 
 # Project description
 Small project to operate a muon telescope.
