@@ -5,7 +5,7 @@ import os
 import time
 from pathlib import Path
 
-from . import __version__
+from ._version import __version__
 from .logger import add_logfile_handler, logger, remove_logfile_handler
 from .telescope import Telescope
 
@@ -129,7 +129,7 @@ def scan(
     if not all(isinstance(x, tuple) and len(x) == 2 and all(isinstance(y, (float, int)) for y in x) for x in positions):
         raise ValueError("Input argument 'positions' must be a list of 2-tuples of floats or integers.")
 
-    os.mkdir(out_dir)
+    os.makedirs(out_dir, exist_ok=True)
     logfile_handler = add_logfile_handler(logger, out_dir / Path("mumasp.log"))
 
     n = len(positions)
@@ -163,7 +163,7 @@ def scan(
             info_str = json.dumps(info_dict)
 
             with open(out_path, "w") as f:
-                f.writelines([info_str] + triggers)
+                f.writelines([info_str + "\n"] + [str(i) + "\n" for i in triggers])
 
             logger.info(f"Measurement finished. Written to {out_path}. Info: {info_str}")
     finally:
