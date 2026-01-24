@@ -16,7 +16,7 @@ def measure(
     max_trig: int = 1000,
     read_interval_s: float = 10.0,
     read_threshold: int = 100,
-) -> tuple[int, float, list[int]]:
+) -> tuple[float, float, list[int]]:
     """
     Run a measurement for the given telescope. The measurement is conducted for at most ``max_t_s`` seconds, or until ``max_trig`` triggers are recorded -- whichever happens first.
 
@@ -35,7 +35,7 @@ def measure(
 
     Returns
     -------
-    t_start: int
+    t_start: float
         The start UNIX timestamp (according to your computer's clock) of the measurement.
     time_elapsed: float
         The time (in seconds) between starting and stopping the measurement.
@@ -174,6 +174,7 @@ def raster_scan(
     telescope: Telescope,
     thetas: list[float],
     phis: list[float],
+    save_dir: str,
     **kwargs: dict,
 ) -> None:
     """
@@ -187,6 +188,8 @@ def raster_scan(
         List of theta values.
     phis: list[float]
         List of phi values.
+    save_dir: str
+        The output directory for measurement files.
     **kwargs
         Extra arguments for `measure` or `scan`: refer to their documentations for a list of all possible arguments.
 
@@ -198,5 +201,6 @@ def raster_scan(
     scan(
         telescope=telescope,
         positions=[(theta, phi) for theta in thetas for phi in phis],
+        save_dir=save_dir,
         **kwargs,
     )

@@ -54,7 +54,14 @@ class Telescope:
         return f"{self.__class__.__name__}(IP={self._arduino_conf['IP']}, calibrated={self.is_calibrated}, position={self.position})"
 
     def send_cmd(self, cmd: str) -> str:
-        """Send a command to the arduino."""
+        """
+        Send a command to the arduino.
+
+        Parameters
+        ----------
+        cmd : str
+            The command to send. Call `Telescope.help()` to see which ones are available.
+        """
         response = ""
 
         try:
@@ -194,7 +201,7 @@ class Telescope:
     @property
     def arduino_date(self) -> str:
         """Return the current date according to the clock on the arduino."""
-        return self.send_cmd("r")
+        return [int(x) for x in self.send_cmd("r").split(",")]
 
     @arduino_date.setter
     def arduino_date(self, val: list[int]) -> None:
@@ -204,12 +211,12 @@ class Telescope:
         Parameters
         ----------
         val : list[int]
-            ...
+            The date as list of integers.
         """
         if (len(val) != 6) or not all(isinstance(x, int) for x in val):
             raise ValueError("Input date has to be a list of 6 integers.")
 
-        response = self.send_cmd("s" + ",".join(val))
+        response = self.send_cmd("s" + ",".join([str(v) for v in val]))
 
         if response == "0":
             print(f"Successfully changed arduino date. Response: {response}")
