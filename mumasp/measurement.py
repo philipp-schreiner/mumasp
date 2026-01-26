@@ -29,7 +29,7 @@ def measure(
     max_trig: int, optional
         Maximum number of triggers to record before finishing the measurement. If `max_t_s` is reached first, the measurement is stopped before this number of triggers is reached. Defaults to 1000 triggers.
     read_interval_s: float, optional
-        Number of seconds between two queries of the Arduino (every `read_interval_s` the number of triggers in the Arduino's memory is read). Has to be short enough to not risk overflowing the Arduino's memory (1000 triggers). Defaults to 10 seconds.
+        Number of seconds between two queries of the Arduino (every `read_interval_s` the number of triggers in the Arduino's memory is read). Has to be short enough to not risk overflowing the Arduino's memory (1000 triggers). If it is longer than `max_t_s`, `max_t_s` is used instead of `read_iterval_s`. Defaults to 10 seconds.
     read_threshold: int, optional
         Number of triggers to wait for before reading and emptying the Arduino's memory.
 
@@ -58,6 +58,8 @@ def measure(
     Compute the rate (in Hz)
     >>> rate = len(triggers) / time_elapsed
     """
+    read_interval_s = min(read_interval_s, max_t_s)
+
     telescope.clear_buffer()
 
     t_start = time.time()
@@ -204,3 +206,40 @@ def raster_scan(
         save_dir=save_dir,
         **kwargs,
     )
+
+
+def load(load_dir: str) -> dict:
+    """
+    Load results of a previous measurement into an easy to handle dictionary.
+
+    Parameters
+    ----------
+    load_dir : str
+        The folder where the `.txt` files from a previous measurement are located.
+
+    See Also
+    --------
+    scan, raster_scan: Perform measurements for several telescope positions and save them to files.
+    """
+    all_data = {
+        "theta_deg": [],
+        "phi_deg": [],
+        "n_triggers": [],
+        "t_start_s": [],
+        "t_elapsed_s": [],
+        "version": [],
+        "trigger_ts": [],
+    }
+
+    for fname in Path(load_dir).glob("meas_t*_p*.txt"):
+        with open(fname) as f:
+            d = json.loads(f.readline())
+            trigs = [int(x) for x in f.readlines()]
+
+        for k in all_data:
+            if k == "trigger_ts":
+                all_data[k].append(trigs)
+            else:
+                all_data[k].append(d[k])
+
+    return all_data

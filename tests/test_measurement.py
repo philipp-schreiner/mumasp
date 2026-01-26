@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from mumasp.measurement import measure, raster_scan, scan
+from mumasp.measurement import load, measure, raster_scan, scan
 
 from .fixtures import tempdir, test_telescope
 
@@ -71,6 +71,20 @@ def test_scan(test_telescope, tempdir):
     assert d2["theta_deg"] == 45 and d2["phi_deg"] == 20
     assert len(ts2) > 1
 
+    # Test if loading a directory returns the desired structure
+    all_data = load(os.path.join(tempdir.name, "testrun"))
+    for k in [
+        "theta_deg",
+        "phi_deg",
+        "n_triggers",
+        "t_start_s",
+        "t_elapsed_s",
+        "version",
+        "trigger_ts",
+    ]:
+        assert k in all_data
+        assert len(all_data[k]) == 2
+
 
 def test_raster_scan(test_telescope, tempdir):
     thetas = [0, 45, 90]
@@ -127,3 +141,17 @@ def test_raster_scan(test_telescope, tempdir):
 
         with open(fpath) as f:
             s == json.loads(f.readline())["t_start_s"]
+
+    # Test if loading a directory returns the desired structure
+    all_data = load(os.path.join(tempdir.name, "testrun"))
+    for k in [
+        "theta_deg",
+        "phi_deg",
+        "n_triggers",
+        "t_start_s",
+        "t_elapsed_s",
+        "version",
+        "trigger_ts",
+    ]:
+        assert k in all_data
+        assert len(all_data[k]) == len(thetas) * len(phis)
