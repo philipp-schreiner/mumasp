@@ -5,3 +5,4 @@ logs
 .DS_Store
 testing.ipynb
 *.egg-info
+/*.png
