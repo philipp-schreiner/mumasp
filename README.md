@@ -34,7 +34,7 @@ The Arduino has the static IP address `192.168.99.99`. To connect, you have to e
 
 On MacOS and Windows, this can easily be done in the network settings. On Linux, you can use (change `eth0` to the correct interface)
 ```shell
-$ ifconfig eth0 192.168.99.98 netmask 255.255.255.0
+$ ifconfig eth1 192.168.99.98 netmask 255.255.255.0
 ```
 
 ## Connecting to the Raspberry Pi

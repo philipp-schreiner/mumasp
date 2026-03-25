@@ -89,6 +89,49 @@ def measure(
     return t_start, time_elapsed, triggers
 
 
+def measure_and_save(telescope: Telescope, fname: str, **kwargs: dict) -> None:
+    """
+    Perform a single measurement and write the measurement results to `fname`.
+
+    Parameters
+    ----------
+    telescope : Telescope
+        The instance of the muon telescope to perform the measurement on.
+    fname: str
+        The output file for the measurement.
+    **kwargs
+        Extra arguments for `measure`: refer to its documentation for a list of all possible arguments.
+
+    Examples
+    --------
+    >>> import mumasp
+    >>> from mumasp.measurement import scan
+    >>> t = mumasp.Telescope()
+
+    Now perform measurement for 10 minutes (600 seconds).
+    >>> measure_and_save(t, "test_output", max_t_s=600)
+
+    See Also
+    --------
+    measure : Perform a single measurement without saving.
+    """
+    t_start, time_elapsed, triggers = measure(
+        telescope=telescope,
+        **kwargs,
+    )
+
+    info_dict = {
+        "n_triggers": len(triggers),
+        "t_start_s": t_start,
+        "t_elapsed_s": time_elapsed,
+        "version": __version__,
+    }
+    info_str = json.dumps(info_dict)
+
+    with open(fname, "w") as f:
+        f.writelines([info_str + "\n"] + [str(i) + "\n" for i in triggers])
+
+
 def scan(
     telescope: Telescope,
     positions: list[tuple[float, float]],
@@ -210,7 +253,7 @@ def raster_scan(
 
 def load(load_dir: str) -> dict:
     """
-    Load results of a previous measurement into an easy to handle dictionary.
+    Load results of a previous measurement (conduced with either `scan` or `raster_scan`) into an easy to handle dictionary.
 
     Parameters
     ----------
@@ -243,3 +286,25 @@ def load(load_dir: str) -> dict:
                 all_data[k].append(d[k])
 
     return all_data
+
+
+def load_single(fname: str) -> dict:
+    """
+    Load results of a measurement into an easy to handle dictionary.
+
+    Parameters
+    ----------
+    fname : str
+        The file of a previous measurement.
+
+    See Also
+    --------
+    load: Load all files recorded with `scan` or `raster_scan` in a given directory.
+    """
+    with open(fname) as f:
+        d = json.loads(f.readline())
+        trigs = [int(x) for x in f.readlines()]
+
+    d["trigger_ts"] = trigs
+
+    return d

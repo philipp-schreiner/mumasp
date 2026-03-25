@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from mumasp.measurement import load, measure, raster_scan, scan
+from mumasp.measurement import load, load_single, measure, measure_and_save, raster_scan, scan
 
 from .fixtures import tempdir, test_telescope
 
@@ -24,6 +24,18 @@ def test_measure(test_telescope):
     assert isinstance(t_start, float)
     assert isinstance(t_elapsed, float) and t_elapsed < 4
     assert isinstance(trigs, list) and all(isinstance(t, int) for t in trigs)
+
+
+def test_measure_and_save(test_telescope, tempdir):
+    out_name = os.path.join(tempdir.name, "single_test.txt")
+    measure_and_save(
+        test_telescope,
+        out_name,
+        max_t_s=3,
+    )
+    assert os.path.exists(out_name)
+
+    load_single(out_name)
 
 
 def test_scan(test_telescope, tempdir):
@@ -154,4 +166,10 @@ def test_raster_scan(test_telescope, tempdir):
         "trigger_ts",
     ]:
         assert k in all_data
+        assert len(all_data[k]) == len(thetas) * len(phis)
+        assert len(all_data[k]) == len(thetas) * len(phis)
+        assert len(all_data[k]) == len(thetas) * len(phis)
+        assert len(all_data[k]) == len(thetas) * len(phis)
+        assert len(all_data[k]) == len(thetas) * len(phis)
+        assert len(all_data[k]) == len(thetas) * len(phis)
         assert len(all_data[k]) == len(thetas) * len(phis)
