@@ -121,21 +121,15 @@ theta, phi = np.array(data_dict["theta_deg"]), np.array(d["phi_deg"])
 n_trigs = np.array(data_dict["n_triggers"])
 t_meas = np.array(d["t_elapsed_s"])
 ```
-Typically, the muon flux is reported in units of cm⁻²s⁻¹sr⁻¹. The active solid angle (in sr) of the telescope is given by the pyramid which is defined by connecting the corners of the outermost panels that are active. Let $d$ be the distance between those panels and $a=20\,$cm the side length of the scintillator panels. Then [[1]](https://en.wikipedia.org/wiki/Solid_angle#Pyramid)
+Typically, the muon intensity is reported in units of cm⁻²s⁻¹sr⁻¹. For that, the measured rate has to be divided by the so-called *geometric factor* $G$. Let $d$ be the distance between the outermost panels and $a=20$ cm the side length of the scintillator panels. Then $G\approx a^4/d^2$ if $d$ is much larger than $a$ [[1]](https://iopscience.iop.org/article/10.1088/0022-3735/5/3/024).
 
-$$\Omega=4\,\arctan\frac{a^2}{d\sqrt{d^2+2a^2}}.$$
-
-For $d=197\,$cm, this gives $\Omega=0.04\,$sr. For $d=64.5\,$cm, we get $\Omega=0.35\,$sr. Double check which panels were active and what their distance was in your measurement. The flux is then normalized as follows:
+For $d=197$ cm, we find $G=4.1$ cm²sr. For $d=64.5$ cm, we get $G=38.5$ cm²sr. Double check which panels were active and what their distance is in your measurement. The intensity is then normalized as follows:
 ```python
-def solid_angle(d_cm: float, a_cm: float = 20.):
-    return 4*np.arctan(a_cm**2 /(d_cm * np.sqrt(d_cm**2+2*a_cm**2)))
-
 panel_distance = 197 # cm
 panel_side_length = 20 # cm
-omega = omega = solid_angle(panel_distance) # sr
-panel_area = panel_side_length**2 # cm^2
+G = panel_side_length**4 / panel_distance**2 # cm^2 sr
 
-rate_trigs = n_trigs/t_meas/omega/panel_area # 1/(cm^2 s sr)
+rate_trigs = n_trigs/t_meas/G # 1/(cm^2 s sr)
 ```
 It might also be useful to arrange the results in a $(\theta,\phi)$-grid:
 ```python
@@ -150,7 +144,7 @@ for t, p, r in zip(theta, phi, rate_trigs):
     j = phi_grid == p
     rates[i*j] = r
 ```
-Now, `theta_grid` and `phi_grid` are meshgrids and `rates` is the corresponding 2D array of flux values. We can plot them in a polar plot:
+Now, `theta_grid` and `phi_grid` are meshgrids and `rates` is the corresponding 2D array of intensity values. We can plot them in a polar plot:
 ```python
 fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection="polar"))
 pcm = ax.pcolormesh(
@@ -160,7 +154,7 @@ pcm = ax.pcolormesh(
     shading="nearest",
     cmap="Blues",
 )
-fig.colorbar(pcm, orientation='vertical', pad=0.1, label="flux (cm$^{-2}\,$sr$^{-1}\,$s$^{-1}$)")
+fig.colorbar(pcm, orientation='vertical', pad=0.1, label="Intensity (cm$^{-2}\,$sr$^{-1}\,$s$^{-1}$)")
 ```
 ![](doc/img/example_output.png)
 
